@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SmartImage } from "@/components/ui/smart-image";
+import { StoryVideo } from "@/components/ui/story-video";
 import { Quote } from "lucide-react";
 import { Reveal } from "@/components/animations/reveal";
 import { FadeUp } from "@/components/animations/fade-up";
@@ -44,13 +44,7 @@ export default async function AboutPage() {
           delay={0.3}
           className="relative -mt-12 aspect-[16/9] overflow-hidden rounded-3xl border border-border shadow-2xl sm:-mt-16 lg:aspect-[21/9]"
         >
-          <SmartImage
-            src={site.about.image}
-            alt="The Digiline Tech team at work"
-            fill
-            sizes="100vw"
-            className="object-cover"
-          />
+          <StoryVideo label="The Digiline Tech team at work" className="absolute inset-0" />
         </FadeUp>
       </section>
 

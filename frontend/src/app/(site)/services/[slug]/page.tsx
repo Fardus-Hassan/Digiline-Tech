@@ -9,7 +9,8 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { PageHero } from "@/components/site/page-hero";
 import { ServiceCard } from "@/components/site/service-card";
 import { CtaCard } from "@/components/site/cta-card";
-import { getService, getServices } from "@/lib/content";
+import { SubServiceCard } from "@/components/site/sub-service-card";
+import { getService, getServices, getSubServices } from "@/lib/content";
 
 export async function generateStaticParams() {
   const services = await getServices();
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: PageProps<"/services/[slug]">
 
 export default async function ServiceDetailPage({ params }: PageProps<"/services/[slug]">) {
   const { slug } = await params;
-  const [service, services] = await Promise.all([getService(slug), getServices()]);
+  const [service, services, subServices] = await Promise.all([getService(slug), getServices(), getSubServices(slug)]);
   if (!service) notFound();
 
   const others = services.filter((s) => s.slug !== service.slug).slice(0, 3);
@@ -54,6 +55,24 @@ export default async function ServiceDetailPage({ params }: PageProps<"/services
           Get Started <ArrowRight className="size-4" />
         </ButtonLink>
       </PageHero>
+
+      {subServices.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 pt-16 sm:px-6 lg:px-8 lg:pt-24">
+          <SectionHeading
+            eyebrow={`${subServices.length} services included`}
+            title={`Our ${service.shortTitle}`}
+            highlight="Services"
+            description="Pick exactly what you need — click any service to see what's included and pricing."
+          />
+          <StaggerList className="mt-10 grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+            {subServices.map((sub, i) => (
+              <li key={sub.slug} className="h-full">
+                <SubServiceCard serviceSlug={service.slug} subService={sub} index={i} />
+              </li>
+            ))}
+          </StaggerList>
+        </section>
+      )}
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-16 sm:px-6 lg:grid-cols-5 lg:px-8 lg:py-24">
         <Reveal className="rounded-3xl border border-border bg-card p-6 shadow-xl sm:p-10 lg:col-span-3">

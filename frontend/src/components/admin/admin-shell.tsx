@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { Inbox, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Logo } from "@/components/logo";
 import { api } from "@/lib/api";
@@ -12,7 +12,10 @@ import { cn } from "@/lib/utils";
 
 type Admin = { id: string; name: string; email: string };
 
-const nav = [{ href: "/admin", label: "Dashboard", icon: LayoutDashboard }];
+const nav = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/messages", label: "Messages", icon: Inbox },
+];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

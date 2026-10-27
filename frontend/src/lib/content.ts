@@ -13,11 +13,22 @@ export type Service = {
   shortTitle: string;
   icon: ServiceIconName;
   excerpt: string;
+  startingPrice: { amount: number; period?: "month" | "project" | "session" };
   heroTitle: string;
   description: string;
   image: string;
   features: string[];
   whyItWorks: string;
+};
+
+export type SubService = {
+  slug: string;
+  title: string;
+  excerpt: string;
+  description: string;
+  startingPrice: Service["startingPrice"];
+  deliverables: string[];
+  turnaround: string;
 };
 
 export type CaseStudyCategory = "E-commerce" | "Lead Generation" | "Brand Awareness" | "Website & SEO";
@@ -106,6 +117,7 @@ const services: Service[] = [
     shortTitle: "Social Media Marketing",
     icon: "megaphone",
     excerpt: "Build your brand and engage your audience across every social platform.",
+    startingPrice: { amount: 15000, period: "month" },
     heroTitle: "Social Media Marketing",
     description:
       "Build your brand, engage your audience and drive real results with data-driven social media strategies.",
@@ -125,6 +137,7 @@ const services: Service[] = [
     shortTitle: "Paid Advertising",
     icon: "target",
     excerpt: "High-ROI campaigns on Google, Meta and TikTok that turn ad spend into revenue.",
+    startingPrice: { amount: 12000, period: "month" },
     heroTitle: "Paid Advertising",
     description:
       "Every taka counts. We plan, launch and optimise paid campaigns that bring in customers — not just clicks.",
@@ -144,6 +157,7 @@ const services: Service[] = [
     shortTitle: "SEO & Content Marketing",
     icon: "search",
     excerpt: "Rank higher, attract organic traffic and earn trust with content that converts.",
+    startingPrice: { amount: 18000, period: "month" },
     heroTitle: "SEO & Content Marketing",
     description:
       "Get found by the customers already searching for you, with technical SEO and content built to rank and convert.",
@@ -163,6 +177,7 @@ const services: Service[] = [
     shortTitle: "Website & E-commerce",
     icon: "monitor",
     excerpt: "Fast, modern websites and online stores designed to turn visitors into customers.",
+    startingPrice: { amount: 35000, period: "project" },
     heroTitle: "Website & E-commerce",
     description: "From landing pages to full online stores, we build fast, secure and mobile-first websites that sell.",
     image: "/images/hero-laptop.jpg",
@@ -181,6 +196,7 @@ const services: Service[] = [
     shortTitle: "Business Growth Consulting",
     icon: "chart",
     excerpt: "Clear strategy, sharper positioning and a roadmap for sustainable growth.",
+    startingPrice: { amount: 10000, period: "session" },
     heroTitle: "Business Growth Consulting",
     description:
       "We look at your whole funnel — brand, offer, marketing and sales — and build a practical plan to grow.",
@@ -200,6 +216,7 @@ const services: Service[] = [
     shortTitle: "Tech Support & Solutions",
     icon: "settings",
     excerpt: "Reliable IT support, automation and cloud solutions that keep your business running.",
+    startingPrice: { amount: 8000, period: "month" },
     heroTitle: "Tech Support & Solutions",
     description: "Keep your business running smoothly with reliable IT support, cloud setup and smart automation.",
     image: "/images/office.jpg",
@@ -441,6 +458,181 @@ export async function getServices() {
 
 export async function getService(slug: string) {
   return services.find((s) => s.slug === slug) ?? null;
+}
+
+/** Sub-services keyed by their parent service slug. Services without an entry have none. */
+const subServices: Record<string, SubService[]> = {
+  "social-media-marketing": [
+    {
+      slug: "facebook-page-management",
+      title: "Facebook Page Management",
+      excerpt: "Daily posting, replies and page growth handled end to end.",
+      description:
+        "We plan, design and publish content for your Facebook page, reply to comments and messages, and grow an audience that actually buys.",
+      startingPrice: { amount: 8000, period: "month" },
+      deliverables: [
+        "20 designed posts per month",
+        "Content calendar & captions",
+        "Comment and inbox moderation",
+        "Monthly performance report",
+      ],
+      turnaround: "Starts within 3 days",
+    },
+    {
+      slug: "instagram-growth",
+      title: "Instagram Growth",
+      excerpt: "Reels, stories and a grid that turns followers into customers.",
+      description:
+        "A consistent Instagram presence with Reels, Stories and a branded grid, plus hashtag and engagement strategy to reach the right people.",
+      startingPrice: { amount: 10000, period: "month" },
+      deliverables: ["8 Reels per month", "Story templates", "Hashtag & audience research", "Profile optimisation"],
+      turnaround: "Starts within 5 days",
+    },
+    {
+      slug: "content-creation",
+      title: "Content Creation",
+      excerpt: "Scroll-stopping graphics, videos and copy for every platform.",
+      description:
+        "Our creative team produces on-brand graphics, short-form videos and copy that you can use across all your social channels.",
+      startingPrice: { amount: 6000, period: "month" },
+      deliverables: ["Graphic design", "Short-form video editing", "Copywriting", "Brand style guide"],
+      turnaround: "First drafts in 4 days",
+    },
+    {
+      slug: "influencer-marketing",
+      title: "Influencer Marketing",
+      excerpt: "Partner with creators your audience already trusts.",
+      description:
+        "We find, vet and manage influencers that fit your brand, then track every campaign so you know exactly what it delivered.",
+      startingPrice: { amount: 20000, period: "project" },
+      deliverables: ["Influencer shortlisting", "Campaign brief & negotiation", "Content approval", "Results report"],
+      turnaround: "Campaign live in 2 weeks",
+    },
+  ],
+  "paid-advertising": [
+    {
+      slug: "facebook-instagram-ads",
+      title: "Facebook & Instagram Ads",
+      excerpt: "Meta campaigns built to bring sales, not just likes.",
+      description:
+        "Full-funnel Meta campaigns with audience research, creative testing and pixel tracking so every taka is accountable.",
+      startingPrice: { amount: 10000, period: "month" },
+      deliverables: ["Campaign strategy", "Pixel & conversion setup", "Ad creative testing", "Weekly optimisation"],
+      turnaround: "Ads live in 3 days",
+    },
+    {
+      slug: "google-ads",
+      title: "Google Ads",
+      excerpt: "Show up the moment customers search for what you sell.",
+      description:
+        "Search, Shopping and Performance Max campaigns structured around buyer intent, with keyword and bid management every week.",
+      startingPrice: { amount: 12000, period: "month" },
+      deliverables: ["Keyword research", "Search & Shopping campaigns", "Conversion tracking", "Monthly ROAS report"],
+      turnaround: "Ads live in 4 days",
+    },
+    {
+      slug: "tiktok-ads",
+      title: "TikTok Ads",
+      excerpt: "Native-feeling video ads for a younger, high-intent audience.",
+      description:
+        "TikTok campaigns with creator-style video ads, Spark Ads and audience targeting designed for fast, affordable reach.",
+      startingPrice: { amount: 10000, period: "month" },
+      deliverables: ["Video ad concepts", "Spark Ads setup", "Audience targeting", "Performance tracking"],
+      turnaround: "Ads live in 5 days",
+    },
+  ],
+  "seo-content-marketing": [
+    {
+      slug: "technical-seo-audit",
+      title: "Technical SEO Audit",
+      excerpt: "Find and fix what is stopping Google from ranking you.",
+      description:
+        "A full technical review of your site — speed, indexing, structure and errors — with a prioritised fix list.",
+      startingPrice: { amount: 15000, period: "project" },
+      deliverables: [
+        "Crawl & indexing review",
+        "Core Web Vitals check",
+        "Site structure analysis",
+        "Prioritised fix list",
+      ],
+      turnaround: "Report in 7 days",
+    },
+    {
+      slug: "local-seo",
+      title: "Local SEO",
+      excerpt: "Rank in Google Maps when nearby customers search.",
+      description:
+        "Google Business Profile optimisation, local citations and review strategy so you appear in the local map pack.",
+      startingPrice: { amount: 8000, period: "month" },
+      deliverables: ["Google Business Profile setup", "Local citations", "Review strategy", "Local rank tracking"],
+      turnaround: "Starts within 3 days",
+    },
+    {
+      slug: "blog-content-writing",
+      title: "Blog & Content Writing",
+      excerpt: "Search-optimised articles that build trust and traffic.",
+      description:
+        "Researched, SEO-optimised articles written for your customers, published on a schedule that keeps traffic growing.",
+      startingPrice: { amount: 7000, period: "month" },
+      deliverables: ["Keyword-led topic plan", "4 articles per month", "On-page optimisation", "Internal linking"],
+      turnaround: "First article in 5 days",
+    },
+  ],
+  "website-ecommerce": [
+    {
+      slug: "business-website",
+      title: "Business Website",
+      excerpt: "A fast, professional website that builds trust instantly.",
+      description:
+        "A custom-designed, mobile-first business website with clear messaging, contact forms and basic SEO built in.",
+      startingPrice: { amount: 25000, period: "project" },
+      deliverables: ["Up to 6 custom pages", "Mobile-first design", "Contact forms", "Basic SEO setup"],
+      turnaround: "Delivered in 2–3 weeks",
+    },
+    {
+      slug: "ecommerce-store",
+      title: "E-commerce Store",
+      excerpt: "An online store with payments, inventory and fast checkout.",
+      description:
+        "A complete online store with product management, bKash/card payments, delivery integration and a checkout built to convert.",
+      startingPrice: { amount: 45000, period: "project" },
+      deliverables: [
+        "Product & inventory management",
+        "Payment gateway integration",
+        "Courier integration",
+        "Order dashboard",
+      ],
+      turnaround: "Delivered in 4–6 weeks",
+    },
+    {
+      slug: "landing-page",
+      title: "Landing Page",
+      excerpt: "A single high-converting page for your campaign or product.",
+      description:
+        "A focused landing page designed around one goal — leads or sales — with fast loading and tracking ready for ads.",
+      startingPrice: { amount: 12000, period: "project" },
+      deliverables: ["Conversion-focused design", "Copywriting support", "Pixel & analytics setup", "A/B test ready"],
+      turnaround: "Delivered in 1 week",
+    },
+    {
+      slug: "website-maintenance",
+      title: "Website Maintenance",
+      excerpt: "Updates, backups and security so your site never breaks.",
+      description:
+        "Ongoing care for your website — updates, backups, uptime monitoring and small content changes whenever you need them.",
+      startingPrice: { amount: 5000, period: "month" },
+      deliverables: ["Weekly backups", "Security & plugin updates", "Uptime monitoring", "Small content edits"],
+      turnaround: "Starts immediately",
+    },
+  ],
+};
+
+export async function getSubServices(serviceSlug: string) {
+  return subServices[serviceSlug] ?? [];
+}
+
+export async function getSubService(serviceSlug: string, slug: string) {
+  return subServices[serviceSlug]?.find((s) => s.slug === slug) ?? null;
 }
 
 export const caseStudyCategories: CaseStudyCategory[] = [

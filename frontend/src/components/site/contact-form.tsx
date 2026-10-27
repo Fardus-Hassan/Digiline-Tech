@@ -2,25 +2,62 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const fieldClass =
-  "w-full rounded-xl border border-border bg-background px-4 py-3 text-base outline-none transition-colors sm:text-sm placeholder:text-muted-foreground focus:border-accent focus:ring-2 focus:ring-accent/20";
+  "w-full rounded-xl border border-border bg-background px-4 py-3 text-base outline-none transition-colors sm:text-sm placeholder:text-muted-foreground focus:border-accent focus:ring-2 focus:ring-accent/20 aria-invalid:border-red-500 aria-invalid:focus:ring-red-500/20";
+
+type FieldErrors = Partial<Record<"name" | "email" | "phone" | "subject" | "message", string[]>>;
+
+function FieldError({ id, errors }: { id: string; errors?: string[] }) {
+  if (!errors?.length) return null;
+  return (
+    <p id={id} className="mt-1.5 px-1 text-xs text-red-500">
+      {errors[0]}
+    </p>
+  );
+}
 
 export function ContactForm({ className }: { className?: string }) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     setStatus("sending");
-    // TODO: send to the Express API once the contact messages module exists
-    await new Promise((r) => setTimeout(r, 800));
-    form.reset();
-    setStatus("sent");
+    setError("");
+    setFieldErrors({});
+    try {
+      await api("/contact", {
+        method: "POST",
+        body: JSON.stringify(Object.fromEntries(new FormData(form))),
+      });
+      form.reset();
+      setStatus("sent");
+    } catch (err) {
+      setStatus("idle");
+      if (!(err instanceof ApiError) || err.status >= 500) {
+        setError("Couldn't send your message right now. Please try again or email us directly.");
+      } else if (err.errors) {
+        setFieldErrors(err.errors);
+        setError("Please check the highlighted fields.");
+      } else {
+        setError(err.message);
+      }
+    }
   }
+
+  const field = (name: keyof FieldErrors) => ({
+    name,
+    "aria-invalid": fieldErrors[name] ? true : undefined,
+    "aria-describedby": fieldErrors[name] ? `${name}-error` : undefined,
+    onInput: () => fieldErrors[name] && setFieldErrors((errors) => ({ ...errors, [name]: undefined })),
+  });
 
   return (
     <div className={cn("relative rounded-3xl border border-border bg-card p-5 shadow-xl sm:p-8", className)}>
@@ -43,38 +80,104 @@ export function ContactForm({ className }: { className?: string }) {
           </motion.div>
         ) : (
           <motion.form key="form" onSubmit={onSubmit} exit={{ opacity: 0 }} className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <input name="name" required placeholder="Your Name *" aria-label="Your name" className={fieldClass} />
-              <input
-                name="email"
-                type="email"
-                required
-                placeholder="Your Email *"
-                aria-label="Your email"
-                className={fieldClass}
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <input
-                name="phone"
-                type="tel"
-                placeholder="Phone Number"
-                aria-label="Phone number"
-                className={fieldClass}
-              />
-              <input name="subject" placeholder="Subject" aria-label="Subject" className={fieldClass} />
-            </div>
-            <textarea
-              name="message"
-              required
-              rows={5}
-              placeholder="Your Message *"
-              aria-label="Your message"
-              className={cn(fieldClass, "resize-none")}
+            <input
+              name="website"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden
+              className="absolute -left-[9999px] size-px opacity-0"
             />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <input
+                  {...field("name")}
+                  required
+                  minLength={2}
+                  maxLength={100}
+                  autoComplete="name"
+                  placeholder="Your Name *"
+                  aria-label="Your name"
+                  className={fieldClass}
+                />
+                <FieldError id="name-error" errors={fieldErrors.name} />
+              </div>
+              <div>
+                <input
+                  {...field("email")}
+                  type="email"
+                  required
+                  maxLength={200}
+                  autoComplete="email"
+                  placeholder="Your Email *"
+                  aria-label="Your email"
+                  className={fieldClass}
+                />
+                <FieldError id="email-error" errors={fieldErrors.email} />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <input
+                  {...field("phone")}
+                  type="tel"
+                  maxLength={30}
+                  autoComplete="tel"
+                  placeholder="Phone Number"
+                  aria-label="Phone number"
+                  className={fieldClass}
+                />
+                <FieldError id="phone-error" errors={fieldErrors.phone} />
+              </div>
+              <div>
+                <input
+                  {...field("subject")}
+                  maxLength={150}
+                  placeholder="Subject"
+                  aria-label="Subject"
+                  className={fieldClass}
+                />
+                <FieldError id="subject-error" errors={fieldErrors.subject} />
+              </div>
+            </div>
+            <div>
+              <textarea
+                {...field("message")}
+                required
+                minLength={10}
+                maxLength={5000}
+                rows={5}
+                placeholder="Your Message *"
+                aria-label="Your message"
+                className={cn(fieldClass, "resize-none")}
+              />
+              <FieldError id="message-error" errors={fieldErrors.message} />
+            </div>
+
+            <AnimatePresence>
+              {error && (
+                <motion.p
+                  role="alert"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex items-start gap-2 overflow-hidden rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500"
+                >
+                  <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                  {error}
+                </motion.p>
+              )}
+            </AnimatePresence>
+
             <Button type="submit" size="lg" className="w-full" disabled={status === "sending"}>
-              {status === "sending" ? <Loader2 className="size-4 animate-spin" /> : null}
-              Send Message <ArrowRight className="size-4" />
+              {status === "sending" ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" /> Sending...
+                </>
+              ) : (
+                <>
+                  Submit <ArrowRight className="size-4" />
+                </>
+              )}
             </Button>
           </motion.form>
         )}
