@@ -4,15 +4,22 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Play } from "lucide-react";
 import { StoryVideo } from "@/components/ui/story-video";
+import type { SectionData } from "@/lib/cms/defaults";
 import { cn } from "@/lib/utils";
 
-export function VideoCard() {
+export function VideoCard({ video }: { video: SectionData<"settings">["storyVideo"] }) {
   const [playing, setPlaying] = useState(false);
 
   return (
     <div className="dark group relative overflow-hidden rounded-3xl border border-border text-foreground">
       <div className="relative aspect-[16/10] sm:aspect-[21/9]">
-        <StoryVideo label="The Digiline Tech team at work" onPlayingChange={setPlaying} className="absolute inset-0" />
+        <StoryVideo
+          src={video.src}
+          poster={video.poster}
+          label={video.label}
+          onPlayingChange={setPlaying}
+          className="absolute inset-0"
+        />
         <div
           className={cn(
             "pointer-events-none absolute inset-0 bg-gradient-to-t from-background/90 via-background/30 to-transparent transition-opacity duration-500",
@@ -31,15 +38,15 @@ export function VideoCard() {
           </span>
         </span>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 pb-16 sm:p-8 sm:pb-20">
-          <p className="max-w-md text-lg leading-snug font-bold sm:text-2xl">
-            Strategy. Creativity. Technology. Real Business Growth.
-          </p>
-          <Link
-            href="/about"
-            className="pointer-events-auto mt-2 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-accent"
-          >
-            Watch Our Story <ArrowRight className="size-4" />
-          </Link>
+          <p className="max-w-md text-lg leading-snug font-bold sm:text-2xl">{video.title}</p>
+          {video.linkLabel && (
+            <Link
+              href={video.linkHref}
+              className="pointer-events-auto mt-2 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-accent"
+            >
+              {video.linkLabel} <ArrowRight className="size-4" />
+            </Link>
+          )}
         </div>
       </div>
     </div>

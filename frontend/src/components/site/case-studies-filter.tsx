@@ -3,37 +3,46 @@
 import { useState } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { CaseStudyCard } from "@/components/site/case-study-card";
-import type { CaseStudy, CaseStudyCategory } from "@/lib/content";
+import type { CaseStudy, Entry } from "@/lib/cms/types";
 import { cn } from "@/lib/utils";
 
-type Filter = "All" | CaseStudyCategory;
+type CaseStudiesFilterProps = {
+  studies: Entry<CaseStudy>[];
+  categories: string[];
+  allLabel: string;
+  emptyText: string;
+};
 
-export function CaseStudiesFilter({ studies, categories }: { studies: CaseStudy[]; categories: CaseStudyCategory[] }) {
-  const [active, setActive] = useState<Filter>("All");
-  const filtered = active === "All" ? studies : studies.filter((s) => s.category === active);
+export function CaseStudiesFilter({ studies, categories, allLabel, emptyText }: CaseStudiesFilterProps) {
+  const [active, setActive] = useState<string | null>(null);
+  const filtered = active === null ? studies : studies.filter((s) => s.category === active);
+  const filters: { value: string | null; label: string }[] = [
+    { value: null, label: allLabel },
+    ...categories.map((c) => ({ value: c, label: c })),
+  ];
 
   return (
     <LayoutGroup>
       <div role="tablist" aria-label="Filter case studies" className="flex flex-wrap gap-2">
-        {(["All", ...categories] as Filter[]).map((cat) => (
+        {filters.map(({ value, label }) => (
           <button
-            key={cat}
+            key={label}
             role="tab"
-            aria-selected={active === cat}
-            onClick={() => setActive(cat)}
+            aria-selected={active === value}
+            onClick={() => setActive(value)}
             className={cn(
               "relative rounded-full border border-border px-4 py-2 text-sm font-medium transition-colors",
-              active === cat ? "border-transparent text-white" : "text-muted-foreground hover:text-foreground",
+              active === value ? "border-transparent text-white" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {active === cat && (
+            {active === value && (
               <motion.span
                 layoutId="case-filter-pill"
                 className="absolute inset-0 rounded-full bg-accent-gradient"
                 transition={{ type: "spring", stiffness: 400, damping: 32 }}
               />
             )}
-            <span className="relative">{cat}</span>
+            <span className="relative">{label}</span>
           </button>
         ))}
       </div>
@@ -54,9 +63,7 @@ export function CaseStudiesFilter({ studies, categories }: { studies: CaseStudy[
           ))}
         </AnimatePresence>
       </motion.ul>
-      {filtered.length === 0 && (
-        <p className="mt-8 text-center text-muted-foreground">No case studies in this category yet.</p>
-      )}
+      {filtered.length === 0 && <p className="mt-8 text-center text-muted-foreground">{emptyText}</p>}
     </LayoutGroup>
   );
 }

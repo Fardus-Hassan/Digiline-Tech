@@ -1,6 +1,6 @@
 import { SmartImage } from "@/components/ui/smart-image";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, TrendingUp } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Reveal } from "@/components/animations/reveal";
 import { FadeUp } from "@/components/animations/fade-up";
 import { CountUp } from "@/components/animations/count-up";
@@ -26,15 +26,23 @@ import {
   getBrands,
   getCaseStudies,
   getPosts,
+  getSection,
   getServices,
   getSiteSettings,
   getTestimonials,
   getValues,
 } from "@/lib/content";
+import { pageMetadata } from "@/lib/seo";
+
+export async function generateMetadata() {
+  return pageMetadata("home");
+}
 
 export default async function HomePage() {
-  const [site, services, studies, values, posts, brands, testimonials] = await Promise.all([
+  const [site, home, blogPage, services, studies, values, posts, brands, testimonials] = await Promise.all([
     getSiteSettings(),
+    getSection("home"),
+    getSection("blogPage"),
     getServices(),
     getCaseStudies(),
     getValues(),
@@ -42,6 +50,7 @@ export default async function HomePage() {
     getBrands(),
     getTestimonials(),
   ]);
+  const { hero, about } = home;
 
   return (
     <>
@@ -57,36 +66,43 @@ export default async function HomePage() {
           <div className="hero-content">
             <FadeUp>
               <Eyebrow className="mb-3 text-[0.68rem] text-foreground/85 sm:mb-4 sm:text-xs">
-                {site.hero.eyebrow}
+                {hero.eyebrow}
               </Eyebrow>
             </FadeUp>
             <FadeUp delay={0.1}>
               <h1 className="text-[2.75rem] leading-[1.08] font-bold tracking-tight sm:text-6xl lg:text-7xl">
-                {site.hero.titleStart} <span className="text-gradient">{site.hero.titleHighlight}</span>
+                {hero.titleStart} <span className="text-gradient">{hero.titleHighlight}</span>
               </h1>
             </FadeUp>
             <FadeUp delay={0.2}>
               <p className="mt-5 max-w-xl text-[0.95rem] leading-relaxed text-foreground/80 sm:mt-6 sm:text-lg sm:text-muted-foreground">
-                {site.hero.description}
+                {hero.description}
               </p>
             </FadeUp>
             <FadeUp delay={0.3} className="mt-7 grid grid-cols-2 gap-3 sm:mt-8 sm:flex sm:flex-wrap">
-              <ButtonLink href="/contact" className="px-2 text-[0.8rem] whitespace-nowrap sm:h-12 sm:px-6 sm:text-base">
-                Let&apos;s Grow Together <ArrowRight className="size-4" />
-              </ButtonLink>
-              <ButtonLink
-                href="/services"
-                variant="outline"
-                className="px-2 text-[0.8rem] whitespace-nowrap sm:h-12 sm:px-6 sm:text-base"
-              >
-                Our Services
-              </ButtonLink>
+              {hero.primaryButton.label && (
+                <ButtonLink
+                  href={hero.primaryButton.href}
+                  className="px-2 text-[0.8rem] whitespace-nowrap sm:h-12 sm:px-6 sm:text-base"
+                >
+                  {hero.primaryButton.label} <ArrowRight className="size-4" />
+                </ButtonLink>
+              )}
+              {hero.secondaryButton.label && (
+                <ButtonLink
+                  href={hero.secondaryButton.href}
+                  variant="outline"
+                  className="px-2 text-[0.8rem] whitespace-nowrap sm:h-12 sm:px-6 sm:text-base"
+                >
+                  {hero.secondaryButton.label}
+                </ButtonLink>
+              )}
             </FadeUp>
             <FadeUp delay={0.4}>
               <div className="mt-8 grid grid-cols-3 divide-x divide-border sm:mt-10 sm:max-w-lg sm:gap-4 sm:divide-x-0">
-                {site.homeStats.map((stat) => (
+                {hero.stats.map((stat, i) => (
                   <div
-                    key={stat.label}
+                    key={i}
                     className="flex flex-col items-center gap-1 px-1 text-center sm:flex-row sm:items-start sm:gap-2 sm:px-0 sm:text-left"
                   >
                     <div className="flex items-center gap-1.5 sm:contents">
@@ -111,8 +127,8 @@ export default async function HomePage() {
             <div className="hero-media-frame relative aspect-[4/3.4] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_70%,transparent)] sm:aspect-[16/10] lg:aspect-[4/3] lg:rounded-3xl lg:border lg:border-border lg:[mask-image:none] lg:shadow-2xl lg:shadow-brand-blue/20">
               <div className="hero-img absolute inset-0">
                 <SmartImage
-                  src={site.hero.image}
-                  alt="Digital growth dashboard on a laptop"
+                  src={hero.image}
+                  alt={hero.imageAlt}
                   fill
                   preload
                   sizes="(min-width: 1024px) 50vw, 100vw"
@@ -128,15 +144,15 @@ export default async function HomePage() {
             />
             <div className="hero-float absolute -bottom-6 -left-6 hidden items-center gap-3 rounded-2xl border border-border bg-card/90 p-4 pr-5 shadow-xl backdrop-blur lg:flex">
               <span className="flex size-10 items-center justify-center rounded-xl bg-accent-gradient text-white">
-                <TrendingUp className="size-5" />
+                <DynamicIcon name={hero.badge.icon} className="size-5" />
               </span>
               <div>
-                <p className="text-lg font-bold">+230%</p>
-                <p className="text-xs text-muted-foreground">Avg. client growth</p>
+                <p className="text-lg font-bold">{hero.badge.value}</p>
+                <p className="text-xs text-muted-foreground">{hero.badge.label}</p>
               </div>
             </div>
             <div className="hero-float absolute -top-5 -right-5 hidden rounded-2xl border border-border bg-card/90 p-3 shadow-xl backdrop-blur lg:block">
-              <LogoMark className="h-8" />
+              <LogoMark brand={site} className="h-8" />
             </div>
           </FadeUp>
         </div>
@@ -147,22 +163,29 @@ export default async function HomePage() {
         </div>
       </HeroScroll>
 
-      <BrandMarquee brands={brands} label="Trusted by growing brands in Bangladesh & beyond" />
+      {brands.length > 0 && (
+        <BrandMarquee
+          brands={brands.map((brand) => ({ ...brand, iconNode: <DynamicIcon name={brand.icon} /> }))}
+          label={home.brands.label}
+        />
+      )}
 
       {/* Services */}
       <section id="services" className="mx-auto max-w-7xl scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <SectionHeading
-            eyebrow="Our Services"
-            title="Full-Service Digital"
-            highlight="Growth Solutions"
-            description="From strategy to execution, we provide end-to-end digital marketing and tech services to help your brand grow faster, smarter and stronger."
+            eyebrow={home.services.eyebrow}
+            title={home.services.title}
+            highlight={home.services.highlight}
+            description={home.services.description}
           />
-          <Reveal>
-            <Link href="/services" className="inline-flex items-center gap-2 font-semibold hover:text-accent">
-              Explore All Services <ArrowRight className="size-4" />
-            </Link>
-          </Reveal>
+          {home.services.linkLabel && (
+            <Reveal>
+              <Link href="/services" className="inline-flex items-center gap-2 font-semibold hover:text-accent">
+                {home.services.linkLabel} <ArrowRight className="size-4" />
+              </Link>
+            </Reveal>
+          )}
         </div>
         <StaggerList className="mt-10 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
           {services.map((service) => (
@@ -172,7 +195,7 @@ export default async function HomePage() {
           ))}
         </StaggerList>
         <Reveal className="mt-8">
-          <VideoCard />
+          <VideoCard video={site.storyVideo} />
         </Reveal>
       </section>
 
@@ -183,9 +206,9 @@ export default async function HomePage() {
           className="absolute top-1/2 left-1/2 size-[40rem] -translate-1/2 rounded-full bg-brand-blue/10 blur-3xl"
         />
         <div className="relative mx-auto max-w-5xl px-4 py-24 sm:px-6 lg:px-8 lg:py-36">
-          <Eyebrow className="mb-6">Why Digiline Tech</Eyebrow>
+          <Eyebrow className="mb-6">{home.statement.eyebrow}</Eyebrow>
           <ScrollText
-            text="We blend *strategy,* *creativity* and *technology* to turn bold ideas into measurable growth for brands in Bangladesh and around the world."
+            text={home.statement.text}
             className="text-3xl leading-[1.2] font-bold tracking-tight sm:text-5xl lg:text-6xl"
           />
         </div>
@@ -197,8 +220,8 @@ export default async function HomePage() {
           <div className="relative">
             <RevealImage className="aspect-[4/3] rounded-3xl">
               <SmartImage
-                src={site.about.image}
-                alt="The Digiline Tech team"
+                src={about.image}
+                alt={about.imageAlt}
                 fill
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 className="object-cover"
@@ -209,53 +232,60 @@ export default async function HomePage() {
               className="absolute -right-3 -bottom-6 rounded-2xl bg-accent-gradient p-5 text-white shadow-xl sm:-right-6"
             >
               <p className="text-3xl font-bold">
-                <CountUp value={site.aboutStats[1].value} />
+                <CountUp value={about.badge.value} />
               </p>
-              <p className="text-sm text-white/85">{site.aboutStats[1].label}</p>
+              <p className="text-sm text-white/85">{about.badge.label}</p>
             </Reveal>
           </div>
           <div>
             <SectionHeading
-              eyebrow="About Us"
-              title={site.about.title}
-              highlight={site.about.titleHighlight}
-              description={site.about.description}
+              eyebrow={about.eyebrow}
+              title={about.title}
+              highlight={about.highlight}
+              description={about.description}
             />
             <StaggerList className="mt-8 grid grid-cols-2 gap-3">
               {values.map((v) => (
-                <li key={v.title} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+                <li key={v.slug} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
                   <CheckCircle2 className="size-5 shrink-0 text-accent" />
                   <span className="text-sm font-medium">{v.title}</span>
                 </li>
               ))}
             </StaggerList>
-            <Reveal className="mt-8">
-              <ButtonLink href="/about" variant="outline">
-                More About Us <ArrowRight className="size-4" />
-              </ButtonLink>
-            </Reveal>
+            {about.buttonLabel && (
+              <Reveal className="mt-8">
+                <ButtonLink href={about.buttonHref} variant="outline">
+                  {about.buttonLabel} <ArrowRight className="size-4" />
+                </ButtonLink>
+              </Reveal>
+            )}
           </div>
         </div>
       </section>
 
-      <Marquee items={[...services.map((s) => s.title), "Brand Strategy", "Analytics"]} />
+      <Marquee
+        items={[...(home.marquee.includeServices ? services.map((s) => s.title) : []), ...home.marquee.extraItems]}
+      />
 
       {/* Case studies */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <SectionHeading
-            eyebrow="Our Work"
-            title="Case Studies"
-            description="Real brands. Real strategies. Real results."
+            eyebrow={home.caseStudies.eyebrow}
+            title={home.caseStudies.title}
+            highlight={home.caseStudies.highlight}
+            description={home.caseStudies.description}
           />
-          <Reveal>
-            <Link href="/case-studies" className="inline-flex items-center gap-2 font-semibold hover:text-accent">
-              View All Work <ArrowRight className="size-4" />
-            </Link>
-          </Reveal>
+          {home.caseStudies.linkLabel && (
+            <Reveal>
+              <Link href="/case-studies" className="inline-flex items-center gap-2 font-semibold hover:text-accent">
+                {home.caseStudies.linkLabel} <ArrowRight className="size-4" />
+              </Link>
+            </Reveal>
+          )}
         </div>
         <StaggerList className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
-          {studies.slice(0, 3).map((study) => (
+          {studies.slice(0, home.caseStudies.count).map((study) => (
             <li key={study.slug} className="h-full">
               <CaseStudyCard study={study} />
             </li>
@@ -263,23 +293,30 @@ export default async function HomePage() {
         </StaggerList>
       </section>
 
-      <Testimonials testimonials={testimonials} />
+      {testimonials.length > 0 && <Testimonials testimonials={testimonials} content={home.testimonials} />}
 
       {/* Blog */}
       <section className="bg-muted/50">
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
           <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-            <SectionHeading eyebrow="Blog" title="Insights &" highlight="Resources" />
-            <Reveal>
-              <Link href="/blog" className="inline-flex items-center gap-2 font-semibold hover:text-accent">
-                Read the Blog <ArrowRight className="size-4" />
-              </Link>
-            </Reveal>
+            <SectionHeading
+              eyebrow={home.blog.eyebrow}
+              title={home.blog.title}
+              highlight={home.blog.highlight}
+              description={home.blog.description}
+            />
+            {home.blog.linkLabel && (
+              <Reveal>
+                <Link href="/blog" className="inline-flex items-center gap-2 font-semibold hover:text-accent">
+                  {home.blog.linkLabel} <ArrowRight className="size-4" />
+                </Link>
+              </Reveal>
+            )}
           </div>
           <StaggerList className="mt-10 grid gap-6 md:grid-cols-3">
-            {posts.map((post) => (
+            {posts.slice(0, home.blog.count).map((post) => (
               <li key={post.slug} className="h-full">
-                <BlogCard post={post} />
+                <BlogCard post={post} readMoreLabel={blogPage.readMoreLabel} />
               </li>
             ))}
           </StaggerList>

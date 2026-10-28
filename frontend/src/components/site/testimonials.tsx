@@ -5,7 +5,8 @@ import Image from "next/image";
 import { ArrowLeft, ArrowRight, Quote, Star } from "lucide-react";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import { SectionHeading } from "@/components/ui/section-heading";
-import type { Testimonial } from "@/lib/content";
+import type { Entry, Testimonial } from "@/lib/cms/types";
+import type { SectionData } from "@/lib/cms/defaults";
 import { cn } from "@/lib/utils";
 
 const AUTOPLAY_SECONDS = 7;
@@ -57,7 +58,13 @@ function Stars({ rating, className }: { rating: number; className?: string }) {
 }
 
 /** Featured testimonial carousel with GSAP word reveals, autoplay progress, swipe and a stacked-card look. */
-export function Testimonials({ testimonials }: { testimonials: Testimonial[] }) {
+export function Testimonials({
+  testimonials,
+  content,
+}: {
+  testimonials: Entry<Testimonial>[];
+  content: SectionData<"home">["testimonials"];
+}) {
   const ref = useRef<HTMLElement>(null);
   const progress = useRef<gsap.core.Tween | null>(null);
   const state = useRef({ inView: false, hovered: false });
@@ -170,20 +177,21 @@ export function Testimonials({ testimonials }: { testimonials: Testimonial[] }) 
       <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-12 lg:items-center lg:gap-16 lg:px-8 lg:py-28">
         <div className="lg:col-span-5">
           <SectionHeading
-            eyebrow="Testimonials"
-            title="What Our Clients"
-            highlight="Say About Us"
-            description="Real words from the founders and teams we have helped grow."
+            eyebrow={content.eyebrow}
+            title={content.title}
+            highlight={content.highlight}
+            description={content.description}
           />
 
           <div className="t-summary mt-8 space-y-6">
             <div className="flex items-center gap-5 rounded-3xl border border-border bg-card/60 p-5 backdrop-blur sm:p-6">
               <p className="text-5xl font-bold tracking-tight sm:text-6xl">
-                4.9<span className="text-2xl text-muted-foreground">/5</span>
+                {content.rating}
+                <span className="text-2xl text-muted-foreground">/5</span>
               </p>
               <div className="space-y-2">
                 <Stars rating={5} />
-                <p className="text-sm text-muted-foreground">Average rating from 50+ happy clients</p>
+                <p className="text-sm text-muted-foreground">{content.ratingText}</p>
               </div>
             </div>
 
@@ -204,13 +212,10 @@ export function Testimonials({ testimonials }: { testimonials: Testimonial[] }) 
                   </button>
                 ))}
                 <span className="z-0 inline-flex size-11 items-center justify-center rounded-full bg-muted text-xs font-bold ring-4 ring-background">
-                  50+
+                  {content.countBadge}
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Trusted by founders &amp; marketing teams across <span className="text-foreground">Bangladesh</span> and
-                beyond
-              </p>
+              <p className="text-sm text-muted-foreground">{content.trustText}</p>
             </div>
 
             {renderControls("hidden lg:flex")}

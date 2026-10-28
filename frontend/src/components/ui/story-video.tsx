@@ -3,8 +3,6 @@
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
-export const STORY_VIDEO = { src: "/videos/our-story.mp4", poster: "/videos/our-story-poster.jpg" };
-
 /**
  * Video with native controls that starts when it scrolls into view and pauses when it leaves.
  * Browsers only allow autoplay with sound after the visitor has interacted with the site,
@@ -12,10 +10,14 @@ export const STORY_VIDEO = { src: "/videos/our-story.mp4", poster: "/videos/our-
  * A manual pause is respected until the visitor presses play again.
  */
 export function StoryVideo({
+  src,
+  poster,
   className,
   label,
   onPlayingChange,
 }: {
+  src: string;
+  poster?: string;
   className?: string;
   label: string;
   onPlayingChange?: (playing: boolean) => void;
@@ -52,13 +54,13 @@ export function StoryVideo({
     );
     observer.observe(video);
     return () => observer.disconnect();
-  }, []);
+  }, [src]);
 
   return (
     <video
       ref={ref}
-      src={STORY_VIDEO.src}
-      poster={STORY_VIDEO.poster}
+      src={src}
+      poster={poster || undefined}
       aria-label={label}
       controls
       loop

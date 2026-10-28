@@ -1,17 +1,19 @@
 import Link from "next/link";
 import { ArrowUpRight, Clock } from "lucide-react";
 import { StartingPrice } from "@/components/site/service-card";
-import type { SubService } from "@/lib/content";
+import { getSection, type Entry, type SubService } from "@/lib/content";
 
-export function SubServiceCard({
+export async function SubServiceCard({
   serviceSlug,
   subService,
   index,
 }: {
   serviceSlug: string;
-  subService: SubService;
+  subService: Entry<SubService>;
   index: number;
 }) {
+  const { subDetail } = await getSection("servicesPage");
+
   return (
     <Link
       href={`/services/${serviceSlug}/${subService.slug}`}
@@ -35,7 +37,7 @@ export function SubServiceCard({
       <div className="mt-auto flex items-end justify-between gap-2 border-t border-dashed border-border pt-4">
         <StartingPrice price={subService.startingPrice} />
         <span className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-accent">
-          Details
+          {subDetail.cardButton}
           <ArrowUpRight className="size-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </span>
       </div>

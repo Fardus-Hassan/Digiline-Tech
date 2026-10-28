@@ -4,56 +4,43 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import {
-  ArrowRight,
-  BriefcaseBusiness,
-  ChevronDown,
-  FolderKanban,
-  Home,
-  LayoutGrid,
-  Mail,
-  Menu,
-  Newspaper,
-  UserRound,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight, ChevronDown, Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Logo, LogoMark } from "@/components/logo";
+import { Logo, LogoMark, type Brand } from "@/components/logo";
 import { SocialLinks } from "@/components/site/social-links";
 import { ButtonLink } from "@/components/ui/button";
-import type { SocialPlatform } from "@/lib/content";
+import type { SectionData, SocialPlatform } from "@/lib/cms/defaults";
 import { cn } from "@/lib/utils";
 
-type NavItem = { href: string; label: string; icon: LucideIcon; children?: { href: string; label: string }[] };
+type NavItem = { href: string; label: string; icon: React.ReactNode; children?: { href: string; label: string }[] };
 
 type NavbarProps = {
+  brand: Brand;
+  navigation: SectionData<"navigation">;
+  /** Icons rendered on the server, in the same order as `navigation.items`. */
+  icons: { items: React.ReactNode[]; mobileCard: React.ReactNode };
   services: { slug: string; title: string }[];
   socials: { platform: SocialPlatform; url: string }[];
 };
 
-export function Navbar({ services, socials }: NavbarProps) {
+export function Navbar({ brand, navigation, icons, services, socials }: NavbarProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
 
-  const items: NavItem[] = [
-    { href: "/", label: "Home", icon: Home },
-    {
-      href: "/services",
-      label: "Services",
-      icon: LayoutGrid,
-      children: [
-        { href: "/services", label: "All Services" },
-        ...services.map((s) => ({ href: `/services/${s.slug}`, label: s.title })),
-      ],
-    },
-    { href: "/case-studies", label: "Case Studies", icon: FolderKanban },
-    { href: "/about", label: "About Us", icon: UserRound },
-    { href: "/blog", label: "Blog", icon: Newspaper },
-    { href: "/contact", label: "Contact", icon: Mail },
-  ];
+  const items: NavItem[] = navigation.items.map((item, i) => ({
+    href: item.href,
+    label: item.label,
+    icon: icons.items[i],
+    children: item.servicesDropdown
+      ? [
+          { href: "/services", label: navigation.allServicesLabel },
+          ...services.map((s) => ({ href: `/services/${s.slug}`, label: s.title })),
+        ]
+      : undefined,
+  }));
+  const { cta, mobileCard } = navigation;
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
@@ -87,7 +74,7 @@ export function Navbar({ services, socials }: NavbarProps) {
         )}
       >
         <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:h-20 sm:px-6 lg:px-8">
-          <Logo />
+          <Logo brand={brand} />
 
           <ul className="hidden items-center gap-7 lg:flex">
             {items.map((item) => (
@@ -130,9 +117,11 @@ export function Navbar({ services, socials }: NavbarProps) {
 
           <div className="flex items-center gap-2">
             <ThemeToggle className="hidden sm:inline-flex" />
-            <ButtonLink href="/contact" size="sm" className="hidden lg:inline-flex">
-              Free Consultation
-            </ButtonLink>
+            {cta.label && (
+              <ButtonLink href={cta.href} size="sm" className="hidden lg:inline-flex">
+                {cta.label}
+              </ButtonLink>
+            )}
             <button
               type="button"
               aria-label="Open menu"
@@ -156,8 +145,8 @@ export function Navbar({ services, socials }: NavbarProps) {
             className="fixed inset-0 z-[60] flex h-dvh flex-col overflow-y-auto bg-background text-foreground transition-colors duration-500 lg:hidden"
           >
             <div className="flex h-16 shrink-0 items-center justify-between px-4 sm:h-20 sm:px-6">
-              <Link href="/" onClick={close} aria-label="Digiline Tech home">
-                <LogoMark />
+              <Link href="/" onClick={close} aria-label={`${brand.siteName} home`}>
+                <LogoMark brand={brand} />
               </Link>
               <div className="flex items-center gap-2">
                 <ThemeToggle />
@@ -174,7 +163,6 @@ export function Navbar({ services, socials }: NavbarProps) {
 
             <ul className="space-y-1 px-4 pt-4 sm:px-6">
               {items.map((item, i) => {
-                const Icon = item.icon;
                 const isOpen = expanded === item.href;
                 return (
                   <motion.li
@@ -194,7 +182,14 @@ export function Navbar({ services, socials }: NavbarProps) {
                         onClick={close}
                         className="flex flex-1 items-center gap-4 px-4 py-3.5 font-medium"
                       >
-                        <Icon className={cn("size-5", isActive(item.href) ? "text-accent" : "text-muted-foreground")} />
+                        <span
+                          className={cn(
+                            "inline-flex [&_svg]:size-5",
+                            isActive(item.href) ? "text-accent" : "text-muted-foreground",
+                          )}
+                        >
+                          {item.icon}
+                        </span>
                         {item.label}
                       </Link>
                       {item.children && (
@@ -245,13 +240,15 @@ export function Navbar({ services, socials }: NavbarProps) {
               className="mx-4 mt-8 rounded-2xl border border-border bg-muted/60 p-5 transition-colors duration-500 sm:mx-6"
             >
               <p className="flex items-center gap-2 font-semibold">
-                <BriefcaseBusiness className="size-5 text-accent" />
-                Get a Free Consultation
+                <span className="inline-flex text-accent [&_svg]:size-5">{icons.mobileCard}</span>
+                {mobileCard.title}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">Let&apos;s grow your business together.</p>
-              <ButtonLink href="/contact" onClick={close} className="mt-4 w-full">
-                Get Started <ArrowRight className="size-4" />
-              </ButtonLink>
+              <p className="mt-1 text-sm text-muted-foreground">{mobileCard.text}</p>
+              {mobileCard.buttonLabel && (
+                <ButtonLink href={mobileCard.buttonHref} onClick={close} className="mt-4 w-full">
+                  {mobileCard.buttonLabel} <ArrowRight className="size-4" />
+                </ButtonLink>
+              )}
             </motion.div>
 
             <SocialLinks socials={socials} variant="plain" className="mt-auto px-4 py-8 sm:px-6" />

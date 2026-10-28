@@ -1,9 +1,9 @@
 import { SmartImage } from "@/components/ui/smart-image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import type { CaseStudy } from "@/lib/content";
+import type { CaseStudy, Entry } from "@/lib/cms/types";
 
-export function CaseStudyCard({ study }: { study: CaseStudy }) {
+export function CaseStudyCard({ study }: { study: Entry<CaseStudy> }) {
   return (
     <Link
       href={`/case-studies/${study.slug}`}

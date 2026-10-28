@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { Fragment, useRef } from "react";
 import Image from "next/image";
 import { gsap, useGSAP } from "@/lib/gsap";
+import type { Brand } from "@/components/logo";
+import type { SectionData } from "@/lib/cms/defaults";
 
 const SEEN_KEY = "dt-intro-seen";
 const COLUMNS = 5;
@@ -25,8 +27,9 @@ function Chars({ text, className }: { text: string; className?: string }) {
  * First-visit-per-session intro. It is server-rendered and shown via CSS (`.js:not(.intro-done) .intro-loader`)
  * so it covers the page before hydration; the inline script in the root layout adds `.intro-done` on repeat visits.
  */
-export function IntroLoader() {
+export function IntroLoader({ brand, intro }: { brand: Brand; intro: SectionData<"intro"> }) {
   const ref = useRef<HTMLDivElement>(null);
+  const taglineParts = brand.tagline.split("•").map((part) => part.trim()).filter(Boolean);
 
   useGSAP(
     () => {
@@ -190,7 +193,7 @@ export function IntroLoader() {
               <span className="absolute top-[3.5%] left-1/2 size-2.5 -translate-x-1/2 rounded-full bg-brand-orange shadow-[0_0_14px_4px_rgba(252,100,1,0.7)]" />
             </div>
             <Image
-              src="/logo.png"
+              src={brand.logo || "/logo.png"}
               alt=""
               width={318}
               height={201}
@@ -200,18 +203,22 @@ export function IntroLoader() {
           </div>
 
           <p className="mt-8 flex gap-3 text-4xl font-bold tracking-tight [perspective:600px] sm:text-5xl">
-            <Chars text="Digiline" />
-            <Chars text="Tech" className="text-brand-orange" />
+            <Chars text={brand.brandFirst} />
+            <Chars text={brand.brandSecond} className="text-brand-orange" />
           </p>
           <p className="intro-tagline mt-4 text-[0.65rem] font-medium tracking-[0.35em] text-white/60 uppercase sm:text-xs">
-            Marketing <span className="text-brand-orange">•</span> Web <span className="text-brand-orange">•</span> IT
-            Solutions
+            {taglineParts.map((part, i) => (
+              <Fragment key={i}>
+                {i > 0 && <span className="text-brand-orange"> • </span>}
+                {part}
+              </Fragment>
+            ))}
           </p>
         </div>
 
         <div className="intro-corner absolute bottom-[calc(2rem+env(safe-area-inset-bottom))] left-6 font-mono text-[0.65rem] tracking-[0.25em] text-white/50 uppercase sm:left-10 sm:text-xs">
-          <p className="text-white/80">Loading experience</p>
-          <p className="mt-1">Dhaka — Worldwide</p>
+          <p className="text-white/80">{intro.cornerTitle}</p>
+          <p className="mt-1">{intro.cornerSubtitle}</p>
         </div>
         <p className="intro-corner absolute right-6 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] flex items-start text-6xl leading-none font-bold tracking-tighter tabular-nums sm:right-10 sm:text-8xl">
           <span className="intro-count">00</span>

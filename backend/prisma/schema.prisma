@@ -18,17 +18,104 @@ model Admin {
   updatedAt    DateTime @updatedAt
 }
 
+/// Admin-editable message statuses. New messages get the first one; replying sets REPLIED.
+model MessageStatus {
+  key       String  @id
+  label     String
+  color     String
+  /// false = hidden from the inbox and the unread count (spam, archive)
+  inInbox   Boolean @default(true)
+  sortOrder Int     @default(0)
+}
+
 model ContactMessage {
-  id        String   @id @default(cuid())
-  name      String
-  email     String
-  phone     String?
-  subject   String?
-  message   String
-  read      Boolean  @default(false)
-  ip        String?
-  userAgent String?
-  createdAt DateTime @default(now())
+  id          String         @id @default(cuid())
+  name        String
+  email       String
+  phone       String?
+  subject     String?
+  /// Plain text, used for previews, search and notifications
+  message     String
+  /// Sanitized rich text from the website form (null for plain-text messages)
+  messageHtml String?
+  /// MessageStatus.key (not a relation so deleting a status can't cascade)
+  status      String         @default("NEW")
+  read        Boolean        @default(false)
+  notes       String         @default("")
+  ip          String?
+  userAgent   String?
+  replies     MessageReply[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @default(now()) @updatedAt
 
   @@index([read, createdAt])
+  @@index([status, createdAt])
+}
+
+model MessageReply {
+  id        String         @id @default(cuid())
+  messageId String
+  message   ContactMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  subject   String
+  html      String
+  text      String
+  createdAt DateTime       @default(now())
+
+  @@index([messageId, createdAt])
+}
+
+enum EntryStatus {
+  DRAFT
+  PUBLISHED
+}
+
+/// Singleton content blocks: site settings, navigation, page texts (hero, headings, buttons...)
+model Section {
+  key       String   @id
+  data      Json
+  seo       Json?
+  updatedAt DateTime @updatedAt
+}
+
+/// Repeatable content: services, sub-services, case studies, posts, testimonials, brands, values
+model Entry {
+  id          String      @id @default(cuid())
+  collection  String
+  slug        String
+  status      EntryStatus @default(PUBLISHED)
+  sortOrder   Int         @default(0)
+  data        Json
+  seo         Json?
+  parentId    String?
+  parent      Entry?      @relation("EntryChildren", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Entry[]     @relation("EntryChildren")
+  publishedAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([collection, slug])
+  @@index([collection, status, sortOrder])
+  @@index([parentId])
+}
+
+model Media {
+  id          String   @id @default(cuid())
+  kind        String
+  url         String   @unique
+  filename    String
+  mime        String
+  size        Int
+  width       Int?
+  height      Int?
+  alt         String   @default("")
+  blurDataUrl String?
+  createdAt   DateTime @default(now())
+
+  @@index([kind, createdAt])
+}
+
+model Subscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
 }

@@ -2,37 +2,14 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import {
-  Building2,
-  Cpu,
-  GraduationCap,
-  HeartPulse,
-  House,
-  Leaf,
-  Plane,
-  ShoppingBag,
-  UtensilsCrossed,
-  Wallet,
-  type LucideIcon,
-} from "lucide-react";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
-import type { Brand, BrandIconName } from "@/lib/content";
+import type { Brand as BrandData, Wordmark } from "@/lib/cms/types";
 import { cn } from "@/lib/utils";
 
-const icons: Record<BrandIconName, LucideIcon> = {
-  "shopping-bag": ShoppingBag,
-  leaf: Leaf,
-  "heart-pulse": HeartPulse,
-  home: House,
-  wallet: Wallet,
-  "graduation-cap": GraduationCap,
-  building: Building2,
-  cpu: Cpu,
-  utensils: UtensilsCrossed,
-  plane: Plane,
-};
+/** A brand with its icon already rendered on the server. */
+export type Brand = BrandData & { iconNode?: React.ReactNode };
 
-const wordmarks: Record<NonNullable<Brand["wordmark"]>, string> = {
+const wordmarks: Record<Wordmark, string> = {
   bold: "text-lg font-extrabold tracking-tight sm:text-xl",
   serif: "font-serif text-lg font-semibold italic sm:text-xl",
   mono: "font-mono text-sm font-bold tracking-widest uppercase sm:text-base",
@@ -40,7 +17,6 @@ const wordmarks: Record<NonNullable<Brand["wordmark"]>, string> = {
 };
 
 function BrandTile({ brand }: { brand: Brand }) {
-  const Icon = icons[brand.icon];
   return (
     <li className="group/brand flex h-16 shrink-0 items-center justify-center gap-2.5 rounded-2xl border border-border bg-card/60 px-6 text-muted-foreground backdrop-blur transition-[color,border-color,background-color,transform] duration-300 hover:-translate-y-0.5 hover:border-accent/50 hover:bg-card hover:text-foreground sm:h-20 sm:px-8">
       {brand.logo ? (
@@ -53,8 +29,14 @@ function BrandTile({ brand }: { brand: Brand }) {
         />
       ) : (
         <>
-          <Icon className="size-5 shrink-0 transition-colors duration-300 group-hover/brand:text-accent sm:size-6" />
-          <span className={cn("whitespace-nowrap", wordmarks[brand.wordmark ?? "bold"])}>{brand.name}</span>
+          {brand.iconNode && (
+            <span className="inline-flex shrink-0 transition-colors duration-300 group-hover/brand:text-accent [&_svg]:size-5 sm:[&_svg]:size-6">
+              {brand.iconNode}
+            </span>
+          )}
+          <span className={cn("whitespace-nowrap", wordmarks[brand.wordmark ?? "bold"] ?? wordmarks.bold)}>
+            {brand.name}
+          </span>
         </>
       )}
     </li>

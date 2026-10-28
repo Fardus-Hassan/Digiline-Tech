@@ -8,6 +8,12 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
   JWT_EXPIRES_IN: z.string().default("7d"),
   CLIENT_URL: z.string().url().default("http://localhost:3000"),
+  // Optional: new-message email notifications. Leave empty to turn them off.
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(465),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  NOTIFY_EMAIL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

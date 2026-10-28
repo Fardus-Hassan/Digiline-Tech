@@ -1,32 +1,37 @@
-import type { Metadata } from "next";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { Reveal } from "@/components/animations/reveal";
 import { PageHero } from "@/components/site/page-hero";
 import { SocialLinks } from "@/components/site/social-links";
 import { ContactForm } from "@/components/site/contact-form";
-import { getSiteSettings } from "@/lib/content";
+import { getSection, getSiteSettings } from "@/lib/content";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Contact",
-  description: "Have a project in mind? Get in touch with Digiline Tech.",
-};
+export async function generateMetadata() {
+  return pageMetadata("contactPage");
+}
 
 export default async function ContactPage() {
-  const site = await getSiteSettings();
+  const [site, page] = await Promise.all([getSiteSettings(), getSection("contactPage")]);
+  const { labels } = page;
 
   const details = [
-    { icon: Mail, label: "Email", value: site.email, href: `mailto:${site.email}` },
-    { icon: Phone, label: "Phone", value: site.phone, href: `tel:${site.phone.replace(/\s/g, "")}` },
-    { icon: MapPin, label: "Location", value: site.location, note: site.locationNote },
-  ];
+    site.email && { icon: Mail, label: labels.email, value: site.email, href: `mailto:${site.email}` },
+    site.phone && {
+      icon: Phone,
+      label: labels.phone,
+      value: site.phone,
+      href: `tel:${site.phone.replace(/\s/g, "")}`,
+    },
+    site.location && { icon: MapPin, label: labels.location, value: site.location, note: site.locationNote },
+  ].filter((d) => !!d) as { icon: typeof Mail; label: string; value: string; href?: string; note?: string }[];
 
   return (
     <>
       <PageHero
-        eyebrow="Get in Touch"
-        title="Let's Work"
-        highlight="Together"
-        description="Have a project in mind? We're here to help. Reach out and let's create something great together."
+        eyebrow={page.hero.eyebrow}
+        title={page.hero.title}
+        highlight={page.hero.highlight}
+        description={page.hero.description}
       />
 
       <section className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-5 lg:px-8 lg:py-24">
@@ -51,14 +56,16 @@ export default async function ContactPage() {
               </Reveal>
             ))}
           </ul>
-          <Reveal className="mt-8">
-            <p className="mb-3 font-semibold">Follow us</p>
-            <SocialLinks socials={site.socials} />
-          </Reveal>
+          {site.socials.length > 0 && (
+            <Reveal className="mt-8">
+              <p className="mb-3 font-semibold">{labels.follow}</p>
+              <SocialLinks socials={site.socials} />
+            </Reveal>
+          )}
         </div>
 
         <Reveal delay={0.1} className="lg:col-span-3">
-          <ContactForm />
+          <ContactForm labels={page.form} />
         </Reveal>
       </section>
     </>

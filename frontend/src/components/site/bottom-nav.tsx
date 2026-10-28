@@ -4,24 +4,20 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
-import { FolderKanban, Home, LayoutGrid, MessageCircle, UserRound, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Tab = { href: string; label: string; icon: LucideIcon };
-
-const left: Tab[] = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/services", label: "Services", icon: LayoutGrid },
-];
-const right: Tab[] = [
-  { href: "/case-studies", label: "Work", icon: FolderKanban },
-  { href: "/about", label: "About", icon: UserRound },
-];
+type Tab = { href: string; label: string; icon: React.ReactNode };
 
 const haptic = () => navigator.vibrate?.(8);
 
-/** App-style tab bar for phones and small tablets: hides while scrolling down, returns on scroll up. */
-export function BottomNav() {
+/**
+ * App-style tab bar for phones and small tablets: hides while scrolling down, returns on scroll up.
+ * Tabs are split evenly around the centre button; icons arrive pre-rendered from the server.
+ */
+export function BottomNav({ tabs, center }: { tabs: Tab[]; center: Tab }) {
+  const half = Math.ceil(tabs.length / 2);
+  const left = tabs.slice(0, half);
+  const right = tabs.slice(half);
   const pathname = usePathname();
   const [hidden, setHidden] = useState(false);
 
@@ -39,9 +35,9 @@ export function BottomNav() {
   }, []);
 
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
-  const talkActive = isActive("/contact");
+  const talkActive = isActive(center.href);
 
-  const renderTab = ({ href, label, icon: Icon }: Tab) => {
+  const renderTab = ({ href, label, icon }: Tab) => {
     const active = isActive(href);
     return (
       <Link
@@ -58,10 +54,14 @@ export function BottomNav() {
             className="absolute inset-x-1.5 inset-y-1 -z-10 rounded-2xl bg-accent/12"
           />
         )}
-        <Icon
-          className={cn("size-5 transition-colors", active ? "text-accent" : "text-muted-foreground")}
-          strokeWidth={active ? 2.4 : 2}
-        />
+        <span
+          className={cn(
+            "inline-flex transition-colors [&_svg]:size-5",
+            active ? "text-accent [&_svg]:stroke-[2.4]" : "text-muted-foreground",
+          )}
+        >
+          {icon}
+        </span>
         <span
           className={cn(
             "text-[0.65rem] leading-none font-medium transition-colors",
@@ -87,9 +87,9 @@ export function BottomNav() {
 
         <div className="relative flex w-20 shrink-0 justify-center">
           <Link
-            href="/contact"
+            href={center.href}
             onClick={haptic}
-            aria-label="Let's talk"
+            aria-label={center.label}
             aria-current={talkActive ? "page" : undefined}
             className="absolute -top-6 flex flex-col items-center gap-1 transition-transform active:scale-90"
           >
@@ -98,7 +98,7 @@ export function BottomNav() {
                 aria-hidden
                 className="absolute inset-0 animate-ping rounded-full bg-brand-orange/30 [animation-duration:2.4s]"
               />
-              <MessageCircle className="relative size-6" strokeWidth={2.2} />
+              <span className="relative inline-flex [&_svg]:size-6 [&_svg]:stroke-[2.2]">{center.icon}</span>
             </span>
             <span
               className={cn(
@@ -106,7 +106,7 @@ export function BottomNav() {
                 talkActive ? "text-accent" : "text-foreground",
               )}
             >
-              Let&apos;s Talk
+              {center.label}
             </span>
           </Link>
         </div>

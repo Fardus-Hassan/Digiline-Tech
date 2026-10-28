@@ -1,19 +1,10 @@
-import type { Metadata } from "next";
-import { PageHero } from "@/components/site/page-hero";
+import { LegalPage } from "@/components/site/legal-page";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = { title: "Terms & Conditions" };
+export async function generateMetadata() {
+  return pageMetadata("terms");
+}
 
 export default function TermsPage() {
-  return (
-    <>
-      <PageHero eyebrow="Legal" title="Terms & Conditions" />
-      <article className="mx-auto max-w-3xl space-y-5 px-4 py-16 leading-relaxed text-muted-foreground sm:px-6">
-        <p>
-          By using this website you agree to these terms. All content on this site belongs to Digiline Tech unless
-          stated otherwise.
-        </p>
-        <p>Project terms, timelines and payments are agreed separately in each client proposal.</p>
-      </article>
-    </>
-  );
+  return <LegalPage section="terms" />;
 }

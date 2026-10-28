@@ -4,7 +4,9 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { AlertCircle, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { api, ApiError } from "@/lib/api";
+import type { SectionData } from "@/lib/cms/defaults";
 import { cn } from "@/lib/utils";
 
 const fieldClass =
@@ -21,28 +23,42 @@ function FieldError({ id, errors }: { id: string; errors?: string[] }) {
   );
 }
 
-export function ContactForm({ className }: { className?: string }) {
+export function ContactForm({
+  labels,
+  className,
+}: {
+  labels: SectionData<"contactPage">["form"];
+  className?: string;
+}) {
   const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [body, setBody] = useState({ html: "", text: "" });
+  const [editorKey, setEditorKey] = useState(0);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
+    if (body.text.length < 10) {
+      setFieldErrors({ message: ["Please write at least 10 characters."] });
+      return;
+    }
     setStatus("sending");
     setError("");
     setFieldErrors({});
     try {
       await api("/contact", {
         method: "POST",
-        body: JSON.stringify(Object.fromEntries(new FormData(form))),
+        body: JSON.stringify({ ...Object.fromEntries(new FormData(form)), message: body.text, messageHtml: body.html }),
       });
       form.reset();
+      setBody({ html: "", text: "" });
+      setEditorKey((k) => k + 1);
       setStatus("sent");
     } catch (err) {
       setStatus("idle");
       if (!(err instanceof ApiError) || err.status >= 500) {
-        setError("Couldn't send your message right now. Please try again or email us directly.");
+        setError(labels.error);
       } else if (err.errors) {
         setFieldErrors(err.errors);
         setError("Please check the highlighted fields.");
@@ -70,12 +86,10 @@ export function ContactForm({ className }: { className?: string }) {
             className="flex flex-col items-center py-10 text-center"
           >
             <CheckCircle2 className="size-14 text-accent" />
-            <h3 className="mt-4 text-xl font-semibold">Message sent!</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Thanks for reaching out. We&apos;ll get back to you soon.
-            </p>
+            <h3 className="mt-4 text-xl font-semibold">{labels.successTitle}</h3>
+            <p className="mt-2 text-sm text-muted-foreground">{labels.successText}</p>
             <Button variant="outline" size="sm" className="mt-6" onClick={() => setStatus("idle")}>
-              Send another message
+              {labels.again}
             </Button>
           </motion.div>
         ) : (
@@ -95,7 +109,7 @@ export function ContactForm({ className }: { className?: string }) {
                   minLength={2}
                   maxLength={100}
                   autoComplete="name"
-                  placeholder="Your Name *"
+                  placeholder={labels.name}
                   aria-label="Your name"
                   className={fieldClass}
                 />
@@ -108,7 +122,7 @@ export function ContactForm({ className }: { className?: string }) {
                   required
                   maxLength={200}
                   autoComplete="email"
-                  placeholder="Your Email *"
+                  placeholder={labels.email}
                   aria-label="Your email"
                   className={fieldClass}
                 />
@@ -122,7 +136,7 @@ export function ContactForm({ className }: { className?: string }) {
                   type="tel"
                   maxLength={30}
                   autoComplete="tel"
-                  placeholder="Phone Number"
+                  placeholder={labels.phone}
                   aria-label="Phone number"
                   className={fieldClass}
                 />
@@ -132,7 +146,7 @@ export function ContactForm({ className }: { className?: string }) {
                 <input
                   {...field("subject")}
                   maxLength={150}
-                  placeholder="Subject"
+                  placeholder={labels.subject}
                   aria-label="Subject"
                   className={fieldClass}
                 />
@@ -140,15 +154,17 @@ export function ContactForm({ className }: { className?: string }) {
               </div>
             </div>
             <div>
-              <textarea
-                {...field("message")}
-                required
-                minLength={10}
+              <RichTextEditor
+                key={editorKey}
+                value={body.html}
+                onChange={(html, text) => {
+                  setBody({ html, text });
+                  if (fieldErrors.message) setFieldErrors((errors) => ({ ...errors, message: undefined }));
+                }}
+                placeholder={labels.message}
+                ariaLabel="Your message"
                 maxLength={5000}
-                rows={5}
-                placeholder="Your Message *"
-                aria-label="Your message"
-                className={cn(fieldClass, "resize-none")}
+                invalid={!!fieldErrors.message}
               />
               <FieldError id="message-error" errors={fieldErrors.message} />
             </div>
@@ -171,11 +187,11 @@ export function ContactForm({ className }: { className?: string }) {
             <Button type="submit" size="lg" className="w-full" disabled={status === "sending"}>
               {status === "sending" ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" /> Sending...
+                  <Loader2 className="size-4 animate-spin" /> {labels.sending}
                 </>
               ) : (
                 <>
-                  Submit <ArrowRight className="size-4" />
+                  {labels.submit} <ArrowRight className="size-4" />
                 </>
               )}
             </Button>

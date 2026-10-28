@@ -1,211 +1,356 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { Inbox, Loader2, Mail, MailOpen, Phone, RefreshCw, Trash2 } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+import { Inbox, Mail, MailOpen, MessageSquareText, RefreshCw, Reply, Search, Settings2, Trash2, X } from "lucide-react";
+import { api } from "@/lib/api";
+import { errorMessage, timeAgo } from "@/lib/admin";
 import { cn } from "@/lib/utils";
+import { AdminButton, Card, EmptyState, PageHeader, Spinner, inputClass, useConfirm } from "@/components/admin/ui";
+import { MessageDetail } from "@/components/admin/messages/message-detail";
+import { StatusManager } from "@/components/admin/messages/status-manager";
+import { Avatar, StatusPill, statusColor, type MessageStatus, type MessageSummary } from "@/components/admin/messages/shared";
 
-type Message = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  subject: string | null;
-  message: string;
-  read: boolean;
-  createdAt: string;
-};
-
-const dateFormat = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" });
+/** "inbox", "all" or a status key */
+type Tab = string;
+type ListResponse = { messages: MessageSummary[]; statuses: MessageStatus[]; counts: Record<string, number>; unread: number };
 
 export default function MessagesPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [unread, setUnread] = useState(0);
-  const [filter, setFilter] = useState<"all" | "unread">("all");
-  const [openId, setOpenId] = useState<string | null>(null);
+  return (
+    <Suspense fallback={<Spinner />}>
+      <Messages />
+    </Suspense>
+  );
+}
+
+function setOpenParam(id: string | null) {
+  const url = new URL(window.location.href);
+  if (id) url.searchParams.set("id", id);
+  else url.searchParams.delete("id");
+  window.history.pushState(null, "", url);
+}
+
+function Messages() {
+  const confirm = useConfirm();
+  const openId = useSearchParams().get("id");
+  const [tab, setTab] = useState<Tab>("inbox");
+  const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
+  const [data, setData] = useState<ListResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [managing, setManaging] = useState(false);
+  /** Bumped when statuses change so the open message reloads (its status may have been deleted). */
+  const [statusVersion, setStatusVersion] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    setError("");
     try {
-      const res = await api<{ messages: Message[]; unread: number }>(`/contact?filter=${filter}`);
-      setMessages(res.messages);
-      setUnread(res.unread);
+      const params = new URLSearchParams({ status: tab, ...(query && { q: query }) });
+      const res = await api<ListResponse>(`/contact?${params}`);
+      if (tab !== "inbox" && tab !== "all" && !res.statuses.some((s) => s.key === tab)) {
+        setTab("inbox");
+        return;
+      }
+      setData(res);
+      setError("");
+      setSelected((current) => new Set([...current].filter((id) => res.messages.some((m) => m.id === id))));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't load messages");
+      setError(errorMessage(err, "Couldn't load messages"));
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [tab, query, setSelected]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch + refetch on filter change
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch + refetch when the tab or search changes
     load();
   }, [load]);
 
-  async function setRead(message: Message, read: boolean) {
-    if (message.read === read) return;
-    setMessages((list) => list.map((m) => (m.id === message.id ? { ...m, read } : m)));
-    setUnread((n) => n + (read ? -1 : 1));
-    await api(`/contact/${message.id}`, { method: "PATCH", body: JSON.stringify({ read }) }).catch(load);
+  const unread = data?.unread;
+  useEffect(() => {
+    if (unread !== undefined) window.dispatchEvent(new CustomEvent("admin:unread", { detail: unread }));
+  }, [unread]);
+
+  const messages = data?.messages ?? [];
+  const statuses = data?.statuses ?? [];
+  const statusOf = (key: string) => statuses.find((s) => s.key === key);
+  const tabs = [
+    { value: "inbox", label: "Inbox", dot: null },
+    ...statuses.map((s) => ({ value: s.key, label: s.label, dot: statusColor(s).dot })),
+    { value: "all", label: "All", dot: null },
+  ];
+  const allSelected = messages.length > 0 && messages.every((m) => selected.has(m.id));
+
+  function toggle(id: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
-  async function remove(message: Message) {
-    if (!confirm(`Delete the message from ${message.name}?`)) return;
-    setMessages((list) => list.filter((m) => m.id !== message.id));
-    if (!message.read) setUnread((n) => n - 1);
-    await api(`/contact/${message.id}`, { method: "DELETE" }).catch(load);
+  function open(id: string) {
+    setOpenParam(id);
+    setData((d) => d && { ...d, messages: d.messages.map((m) => (m.id === id ? { ...m, read: true } : m)) });
   }
 
-  function toggle(message: Message) {
-    const opening = openId !== message.id;
-    setOpenId(opening ? message.id : null);
-    if (opening) setRead(message, true);
+  async function bulk(action: { action: "status"; status: string } | { action: "read" | "unread" | "delete" }) {
+    const ids = [...selected];
+    if (action.action === "delete") {
+      const ok = await confirm({
+        title: `Delete ${ids.length} message${ids.length > 1 ? "s" : ""}?`,
+        description: "Their notes and reply history will be removed too. This can't be undone.",
+        confirmLabel: "Delete",
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    try {
+      await api("/contact/bulk", { method: "POST", body: JSON.stringify({ ...action, ids }) });
+      const what =
+        action.action === "status"
+          ? `moved to ${statusOf(action.status)?.label}`
+          : action.action === "delete"
+            ? "deleted"
+            : `marked as ${action.action}`;
+      toast.success(`${ids.length} message${ids.length > 1 ? "s" : ""} ${what}`);
+      if (action.action === "delete" && openId && ids.includes(openId)) setOpenParam(null);
+      setSelected(new Set());
+      await load();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
   }
+
+  const inboxCount = data?.counts.inbox ?? 0;
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">Messages</h1>
-          <p className="mt-1 text-muted-foreground">
-            {unread > 0 ? `${unread} unread message${unread > 1 ? "s" : ""}` : "You're all caught up"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-border bg-card p-1 text-sm">
-            {(["all", "unread"] as const).map((value) => (
+    <div className="mx-auto max-w-7xl">
+      <PageHeader
+        title="Messages"
+        icon={MessageSquareText}
+        description={
+          unread
+            ? `${unread} unread message${unread > 1 ? "s" : ""} · ${inboxCount} in inbox`
+            : `You're all caught up · ${inboxCount} in inbox`
+        }
+        actions={
+          <>
+            <AdminButton onClick={() => setManaging(true)} disabled={!data}>
+              <Settings2 /> Manage statuses
+            </AdminButton>
+            <AdminButton size="icon" onClick={load} aria-label="Refresh" title="Refresh">
+              <RefreshCw className={cn(loading && "animate-spin")} />
+            </AdminButton>
+          </>
+        }
+      />
+      {managing && (
+        <StatusManager
+          statuses={statuses}
+          onClose={() => setManaging(false)}
+          onSaved={() => {
+            setStatusVersion((v) => v + 1);
+            load();
+          }}
+        />
+      )}
+
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 [scrollbar-width:none]">
+          {tabs.map((t) => {
+            const active = tab === t.value;
+            const count = data?.counts[t.value] ?? 0;
+            const dot = t.dot;
+            return (
               <button
-                key={value}
+                key={t.value}
                 type="button"
-                onClick={() => setFilter(value)}
+                onClick={() => {
+                  setTab(t.value);
+                  setSelected(new Set());
+                }}
                 className={cn(
-                  "rounded-md px-3 py-1.5 font-medium capitalize transition-colors",
-                  filter === value ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground",
+                  "flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  active
+                    ? "border-accent/40 bg-accent/10 text-accent"
+                    : "border-border bg-card text-muted-foreground hover:border-foreground/20 hover:text-foreground",
                 )}
               >
-                {value}
+                {dot ? <span className={cn("size-2 rounded-full", dot)} /> : <Inbox className="size-3.5" />}
+                {t.label}
+                <span className={cn("rounded-full px-1.5 text-xs tabular-nums", active ? "bg-accent/15" : "bg-muted")}>{count}</span>
               </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={load}
-            aria-label="Refresh"
-            className="inline-flex size-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground"
-          >
-            <RefreshCw className={cn("size-4", loading && "animate-spin")} />
-          </button>
+            );
+          })}
+        </div>
+        <div className="relative xl:ml-auto xl:w-72">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, email, text…"
+            aria-label="Search messages"
+            className={cn(inputClass, "h-10 pr-9 pl-9")}
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              aria-label="Clear search"
+              className="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="mt-6 space-y-3">
-        {error && (
-          <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">{error}</p>
-        )}
+      {error && <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">{error}</p>}
 
-        {loading && messages.length === 0 ? (
-          <div className="flex justify-center py-20 text-muted-foreground">
-            <Loader2 className="size-6 animate-spin" />
-          </div>
-        ) : messages.length === 0 && !error ? (
-          <div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-card py-16 text-center">
-            <Inbox className="size-10 text-muted-foreground" />
-            <p className="mt-3 font-medium">No messages yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">Contact form submissions will show up here.</p>
-          </div>
-        ) : (
-          messages.map((message) => {
-            const open = openId === message.id;
-            return (
-              <article
-                key={message.id}
-                className={cn(
-                  "overflow-hidden rounded-2xl border bg-card transition-colors",
-                  message.read ? "border-border" : "border-accent/40",
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggle(message)}
-                  aria-expanded={open}
-                  className="flex w-full items-start gap-4 p-4 text-left sm:p-5"
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+        <Card className={cn("overflow-hidden lg:sticky lg:top-20", openId && "hidden lg:block")}>
+          <div className="flex min-h-12 items-center gap-2 border-b border-border px-4 py-2">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              disabled={!messages.length}
+              onChange={() => setSelected(allSelected ? new Set() : new Set(messages.map((m) => m.id)))}
+              aria-label="Select all"
+              className="size-4 cursor-pointer accent-accent"
+            />
+            {selected.size > 0 ? (
+              <>
+                <span className="text-sm font-medium">{selected.size} selected</span>
+                <span className="flex-1" />
+                <select
+                  value=""
+                  onChange={(e) => e.target.value && bulk({ action: "status", status: e.target.value })}
+                  aria-label="Move selected to"
+                  className="h-8 cursor-pointer rounded-md border border-border bg-background px-2 text-xs font-medium outline-none hover:bg-muted"
                 >
-                  <span
-                    className={cn(
-                      "mt-1.5 size-2.5 shrink-0 rounded-full",
-                      message.read ? "bg-transparent" : "bg-accent shadow-[0_0_8px_rgba(252,100,1,0.6)]",
-                    )}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                      <span className={cn("truncate", message.read ? "font-medium" : "font-semibold")}>
-                        {message.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {dateFormat.format(new Date(message.createdAt))}
-                      </span>
-                    </span>
-                    <span className="mt-0.5 block truncate text-sm">{message.subject || "No subject"}</span>
-                    {!open && (
-                      <span className="mt-1 line-clamp-1 block text-sm text-muted-foreground">{message.message}</span>
-                    )}
-                  </span>
-                </button>
+                  <option value="">Move to…</option>
+                  {statuses.map((s) => (
+                    <option key={s.key} value={s.key}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+                <AdminButton variant="ghost" size="icon-sm" title="Mark as read" aria-label="Mark as read" onClick={() => bulk({ action: "read" })}>
+                  <MailOpen />
+                </AdminButton>
+                <AdminButton variant="ghost" size="icon-sm" title="Mark as unread" aria-label="Mark as unread" onClick={() => bulk({ action: "unread" })}>
+                  <Mail />
+                </AdminButton>
+                <AdminButton variant="danger-ghost" size="icon-sm" title="Delete" aria-label="Delete selected" onClick={() => bulk({ action: "delete" })}>
+                  <Trash2 />
+                </AdminButton>
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                {messages.length} message{messages.length === 1 ? "" : "s"}
+                {query && ` matching “${query}”`}
+              </span>
+            )}
+          </div>
 
-                <AnimatePresence initial={false}>
-                  {open && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="border-t border-border px-4 pt-4 pb-5 sm:px-5 sm:pl-[3.15rem]">
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.message}</p>
-                        <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
-                          <a
-                            href={`mailto:${message.email}?subject=${encodeURIComponent(`Re: ${message.subject || "Your message to Digiline Tech"}`)}`}
-                            className="inline-flex items-center gap-2 rounded-lg bg-accent-gradient px-3 py-2 font-medium text-white"
-                          >
-                            <Mail className="size-4" /> {message.email}
-                          </a>
-                          {message.phone && (
-                            <a
-                              href={`tel:${message.phone}`}
-                              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 font-medium hover:bg-muted"
-                            >
-                              <Phone className="size-4" /> {message.phone}
-                            </a>
-                          )}
-                          <span className="flex-1" />
-                          <button
-                            type="button"
-                            onClick={() => setRead(message, false)}
-                            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          >
-                            <MailOpen className="size-4" /> Mark unread
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => remove(message)}
-                            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-red-500 hover:bg-red-500/10"
-                          >
-                            <Trash2 className="size-4" /> Delete
-                          </button>
-                        </div>
+          {loading && !data ? (
+            <Spinner />
+          ) : messages.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                icon={query ? Search : Inbox}
+                title={query ? "No matching messages" : "Nothing here"}
+                description={query ? "Try a different name, email or word." : "Messages from the contact form will show up here."}
+              />
+            </div>
+          ) : (
+            <ul className="divide-y divide-border lg:max-h-[calc(100vh-17rem)] lg:overflow-y-auto">
+              {messages.map((m) => {
+                const active = m.id === openId;
+                return (
+                  <li
+                    key={m.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => open(m.id)}
+                    onKeyDown={(e) => e.key === "Enter" && open(m.id)}
+                    className={cn(
+                      "relative flex cursor-pointer gap-3 px-4 py-3.5 transition-colors outline-none hover:bg-muted/60 focus-visible:bg-muted/60",
+                      active && "bg-accent/[0.07] hover:bg-accent/10",
+                      selected.has(m.id) && "bg-accent/5",
+                    )}
+                  >
+                    {active && <span className="absolute inset-y-0 left-0 w-0.5 bg-accent" />}
+                    <input
+                      type="checkbox"
+                      checked={selected.has(m.id)}
+                      onChange={() => toggle(m.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`Select message from ${m.name}`}
+                      className="mt-2.5 size-4 shrink-0 cursor-pointer accent-accent"
+                    />
+                    <Avatar name={m.name} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className={cn("flex-1 truncate text-sm", m.read ? "font-medium" : "font-bold")}>{m.name}</span>
+                        <time className="shrink-0 text-xs text-muted-foreground" dateTime={m.createdAt}>
+                          {timeAgo(m.createdAt)}
+                        </time>
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </article>
-            );
-          })
-        )}
+                      <p className={cn("truncate text-sm", m.read ? "text-foreground/80" : "font-semibold")}>{m.subject || "No subject"}</p>
+                      <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{m.message}</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <StatusPill status={statusOf(m.status)} />
+                        {m._count.replies > 0 && (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="Replies">
+                            <Reply className="size-3" /> {m._count.replies}
+                          </span>
+                        )}
+                        {!m.read && <span className="ml-auto size-2 rounded-full bg-accent shadow-[0_0_8px_rgba(252,100,1,0.6)]" title="Unread" />}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+
+        <div className={cn("min-w-0", !openId && "hidden lg:block")}>
+          {openId ? (
+            <MessageDetail
+              key={`${openId}-${statusVersion}`}
+              id={openId}
+              statuses={statuses}
+              onClose={() => setOpenParam(null)}
+              onChanged={load}
+              onDeleted={() => {
+                setOpenParam(null);
+                load();
+              }}
+            />
+          ) : (
+            <Card className="flex min-h-96 flex-col items-center justify-center p-10 text-center">
+              <span className="flex size-16 items-center justify-center rounded-2xl bg-accent/10 text-accent">
+                <MessageSquareText className="size-8" />
+              </span>
+              <p className="mt-4 font-semibold">Select a message to read it</p>
+              <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+                Change its status, keep private notes and write a formatted reply, all in one place.
+              </p>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );

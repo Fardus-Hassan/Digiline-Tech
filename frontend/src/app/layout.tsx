@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { getSection, getSiteSettings } from "@/lib/content";
+import { absoluteUrl, SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,14 +15,37 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: {
-    default: "Digiline Tech — Marketing, Web & IT Solutions",
-    template: "%s | Digiline Tech",
-  },
-  description: "Digiline Tech delivers digital marketing, web development and IT solutions that grow your business.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const [seo, site] = await Promise.all([getSection("seo"), getSiteSettings()]);
+  const image = seo.ogImage ? [{ url: absoluteUrl(seo.ogImage) }] : undefined;
+
+  return {
+    metadataBase: new URL(SITE_URL),
+    applicationName: site.siteName,
+    title: { default: seo.titleDefault, template: seo.titleTemplate || `%s | ${site.siteName}` },
+    description: seo.description,
+    keywords: seo.keywords || undefined,
+    openGraph: {
+      type: "website",
+      siteName: site.siteName,
+      locale: "en_US",
+      title: seo.titleDefault,
+      description: seo.description,
+      url: SITE_URL,
+      images: image,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: seo.titleDefault,
+      description: seo.description,
+      images: image?.map((i) => i.url),
+      ...(seo.twitterHandle ? { site: seo.twitterHandle, creator: seo.twitterHandle } : {}),
+    },
+    ...(site.favicon ? { icons: { icon: site.favicon, apple: site.favicon } } : {}),
+    ...(seo.googleVerification ? { verification: { google: seo.googleVerification } } : {}),
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large" } },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#03162f",

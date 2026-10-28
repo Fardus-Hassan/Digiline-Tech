@@ -1,17 +1,13 @@
-import { ArrowRight, Lightbulb } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { ScrubScale } from "@/components/animations/scrub-scale";
 import { ButtonLink } from "@/components/ui/button";
 import { Swoosh } from "@/components/decor/swoosh";
+import { DynamicIcon } from "@/components/site/icon-map";
+import { getSection } from "@/lib/content";
 
-export function CtaCard({
-  title = "Have a Project in Mind?",
-  description = "Let's discuss how we can help your business grow.",
-  buttonLabel = "Get a Free Consultation",
-}: {
-  title?: string;
-  description?: string;
-  buttonLabel?: string;
-}) {
+export async function CtaCard() {
+  const cta = await getSection("cta");
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
       <ScrubScale className="dark relative overflow-hidden rounded-3xl border border-border bg-card px-6 py-12 text-center text-foreground sm:px-12 sm:py-16">
@@ -23,19 +19,21 @@ export function CtaCard({
             data-gsap-fade
             className="mx-auto mb-5 inline-flex size-12 items-center justify-center rounded-2xl bg-accent/15 text-accent"
           >
-            <Lightbulb className="size-6" />
+            <DynamicIcon name={cta.icon} className="size-6" />
           </span>
           <h2 data-gsap-fade className="text-2xl font-bold tracking-tight sm:text-4xl">
-            {title}
+            {cta.title}
           </h2>
           <p data-gsap-fade className="mx-auto mt-3 max-w-md text-muted-foreground">
-            {description}
+            {cta.description}
           </p>
-          <div data-gsap-fade className="mt-8">
-            <ButtonLink href="/contact" size="lg">
-              {buttonLabel} <ArrowRight className="size-4" />
-            </ButtonLink>
-          </div>
+          {cta.buttonLabel && (
+            <div data-gsap-fade className="mt-8">
+              <ButtonLink href={cta.buttonHref} size="lg">
+                {cta.buttonLabel} <ArrowRight className="size-4" />
+              </ButtonLink>
+            </div>
+          )}
         </div>
       </ScrubScale>
     </section>

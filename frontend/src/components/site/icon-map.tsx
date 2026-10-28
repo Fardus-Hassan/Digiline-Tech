@@ -1,37 +1,20 @@
-import {
-  Award,
-  BarChart3,
-  DollarSign,
-  Globe,
-  Heart,
-  Lightbulb,
-  Megaphone,
-  MonitorSmartphone,
-  Search,
-  Settings,
-  Target,
-  Users,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
+import * as lucide from "lucide-react";
+import type { LucideIcon, LucideProps } from "lucide-react";
+import dynamicIconImports from "lucide-react/dynamicIconImports";
 
-export const icons: Record<string, LucideIcon> = {
-  megaphone: Megaphone,
-  target: Target,
-  search: Search,
-  monitor: MonitorSmartphone,
-  chart: BarChart3,
-  settings: Settings,
-  award: Award,
-  dollar: DollarSign,
-  users: Users,
-  globe: Globe,
-  heart: Heart,
-  bulb: Lightbulb,
-  zap: Zap,
-};
+const toComponentName = (name: string) =>
+  name
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
 
-export function DynamicIcon({ name, className }: { name?: string; className?: string }) {
-  const Icon = (name && icons[name]) || Zap;
-  return <Icon className={className} />;
+/**
+ * Renders a Lucide icon from its kebab-case name (as chosen in the admin icon picker).
+ * Server-only: importing every icon is fine on the server, so pass the rendered element to client components.
+ */
+export function DynamicIcon({ name, ...props }: { name?: string } & LucideProps) {
+  const Icon = (
+    name && name in dynamicIconImports ? lucide[toComponentName(name) as keyof typeof lucide] : lucide.Sparkles
+  ) as LucideIcon;
+  return <Icon {...props} />;
 }

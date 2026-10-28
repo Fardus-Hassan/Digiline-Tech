@@ -23,7 +23,10 @@ const nextConfig: NextConfig = {
   },
   // Same-origin API so the httpOnly auth cookie from Express works in the browser
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${API_URL}/api/:path*` }];
+    return [
+      { source: "/api/:path*", destination: `${API_URL}/api/:path*` },
+      { source: "/uploads/:path*", destination: `${API_URL}/uploads/:path*` },
+    ];
   },
 };
 

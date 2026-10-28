@@ -1,31 +1,30 @@
-import type { Metadata } from "next";
 import { StaggerList } from "@/components/animations/stagger-list";
 import { PageHero } from "@/components/site/page-hero";
 import { BlogCard } from "@/components/site/blog-card";
 import { CtaCard } from "@/components/site/cta-card";
-import { getPosts } from "@/lib/content";
+import { getPosts, getSection } from "@/lib/content";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Blog",
-  description: "Tips, guides and insights on digital marketing, web and technology.",
-};
+export async function generateMetadata() {
+  return pageMetadata("blogPage");
+}
 
 export default async function BlogPage() {
-  const posts = await getPosts();
+  const [page, posts] = await Promise.all([getSection("blogPage"), getPosts()]);
 
   return (
     <>
       <PageHero
-        eyebrow="Blog"
-        title="Insights &"
-        highlight="Resources"
-        description="Practical tips and guides on marketing, websites and technology to help your business grow."
+        eyebrow={page.hero.eyebrow}
+        title={page.hero.title}
+        highlight={page.hero.highlight}
+        description={page.hero.description}
       />
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <StaggerList className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => (
             <li key={post.slug} className="h-full">
-              <BlogCard post={post} />
+              <BlogCard post={post} readMoreLabel={page.readMoreLabel} />
             </li>
           ))}
         </StaggerList>

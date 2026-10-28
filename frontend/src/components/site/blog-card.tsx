@@ -1,10 +1,10 @@
 import { SmartImage } from "@/components/ui/smart-image";
 import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
-import type { BlogPost } from "@/lib/content";
+import type { BlogPost, Entry } from "@/lib/content";
 import { formatDate } from "@/lib/format";
 
-export function BlogCard({ post }: { post: BlogPost }) {
+export function BlogCard({ post, readMoreLabel }: { post: Entry<BlogPost>; readMoreLabel: string }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
@@ -26,7 +26,7 @@ export function BlogCard({ post }: { post: BlogPost }) {
       </div>
       <div className="flex flex-1 flex-col p-5">
         <p className="flex items-center gap-3 text-xs text-muted-foreground">
-          <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
+          <time dateTime={post.date}>{formatDate(post.date)}</time>
           <span className="flex items-center gap-1">
             <Clock className="size-3.5" /> {post.readTime}
           </span>
@@ -36,7 +36,7 @@ export function BlogCard({ post }: { post: BlogPost }) {
         </h3>
         <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{post.excerpt}</p>
         <span className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-medium text-accent">
-          Read more <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+          {readMoreLabel} <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
         </span>
       </div>
     </Link>
